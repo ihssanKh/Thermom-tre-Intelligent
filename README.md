@@ -1,2 +1,2 @@
 # Thermom-tre-Intelligent
-un thermomètre intelligent qui  permet de détecter la température des gens automatiquement en moins d’une seconde et sans besoin  d'une personne qui la contrôle, ce thermomètre va détectera la température corporelle d’une personne  à distance, qui sera afficher sur un écran.
+Un thermomètre intelligent capable de détecter automatiquement la température corporelle d’une personne à distance, en moins d’une seconde, sans intervention humaine. La température mesurée est ensuite affichée directement sur un écran.
