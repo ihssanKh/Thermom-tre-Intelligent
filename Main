@@ -1,0 +1,71 @@
+import cv2
+import face_recognition
+import numpy as np
+import busio
+import board
+import adafruit_amg88xx
+import time
+
+# Initialisation de la caméra Pi
+video_capture = cv2.VideoCapture(0)
+
+# Initialisation du capteur thermique AMG8833
+i2c = busio.I2C(board.SCL, board.SDA)
+sensor = adafruit_amg88xx.AMG88XX(i2c)
+
+# Chargement et encodage des visages connus
+ihssan_image = face_recognition.load_image_file("dataset/ihssan/ihssan.jpg")
+ihssan_face_encoding = face_recognition.face_encodings(ihssan_image)[0]
+known_face_encodings = [ihssan_face_encoding]
+known_face_names = ["Ihssan"]
+
+face_locations = []
+face_encodings = []
+face_names = []
+process_this_frame = True
+
+while True:
+    ret, frame = video_capture.read()
+
+    # Redimensionner pour accélérer le traitement
+    small_frame = cv2.resize(frame, (0, 0), fx=0.25, fy=0.25)
+    rgb_small_frame = small_frame[:, :, ::-1]
+
+    if process_this_frame:
+        face_locations = face_recognition.face_locations(rgb_small_frame)
+        face_encodings = face_recognition.face_encodings(rgb_small_frame, face_locations)
+
+        face_names = []
+        for face_encoding in face_encodings:
+            matches = face_recognition.compare_faces(known_face_encodings, face_encoding)
+            name = "Inconnu"
+            face_distances = face_recognition.face_distance(known_face_encodings, face_encoding)
+            best_match_index = np.argmin(face_distances)
+            if matches[best_match_index]:
+                name = known_face_names[best_match_index]
+            face_names.append(name)
+
+    process_this_frame = not process_this_frame
+
+    # Lecture de la température via le capteur AMG8833
+    pixels = sensor.pixels
+    max_temp = max(map(max, pixels))
+
+    # Affichage du cadre vidéo avec reconnaissance faciale et température
+    for (top, right, bottom, left), name in zip(face_locations, face_names):
+        top *= 4
+        right *= 4
+        bottom *= 4
+        left *= 4
+        cv2.rectangle(frame, (left, top), (right, bottom), (0, 255, 0), 2)
+        cv2.rectangle(frame, (left, bottom - 35), (right, bottom), (0, 255, 0), cv2.FILLED)
+        cv2.putText(frame, f"{name} : {max_temp:.2f}°C", (left + 6, bottom - 6),
+                    cv2.FONT_HERSHEY_DUPLEX, 0.8, (255, 255, 255), 1)
+
+    cv2.imshow('Thermomètre Intelligent', frame)
+
+    if cv2.waitKey(1) & 0xFF == ord('q'):
+        break
+
+video_capture.release()
+cv2.destroyAllWindows()
